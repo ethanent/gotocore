@@ -39,3 +39,53 @@ func parseVarint(buf []byte, startIdx int, curComponent *Component) (value int, 
 
 	return viVal, viLen + 1, nil
 }
+
+func buildVarint(value int) []byte {
+	v := []byte{}
+
+	osign := 1
+
+	if value < 0 {
+		osign = -1
+	} else {
+		osign = 1
+	}
+
+	value *= osign
+
+	maxPlace := 1
+
+	for value > maxPlace {
+		maxPlace *= 256
+	}
+
+	maxPlace /= 256
+
+	bint := 0
+
+	for maxPlace >= 1 {
+		placeValue := int(math.Floor(float64(value) / float64(maxPlace)))
+		v = append([]byte{byte(placeValue)}, v...)
+
+		bint += maxPlace * placeValue
+
+		value %= maxPlace
+		maxPlace /= 256
+	}
+
+	// Prepend length prefix
+
+	viLen := len(v)
+
+	if osign == -1 {
+		// Negative number
+
+		v = append([]byte{byte(127 + viLen)}, v...)
+	} else {
+		// Positive number
+
+		v = append([]byte{byte(viLen - 1)}, v...)
+	}
+
+	return v
+}

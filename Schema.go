@@ -20,12 +20,13 @@ type Schema struct {
 }
 
 // Parse parses []byte buf into a map[string]interface{}
-func (s *Schema) Parse(buf []byte) (data map[string]interface{}, endByte int, err error) {
+func (s *Schema) Parse(buf []byte) (data map[string]interface{}, endRead int, err error) {
 	curIdx := 0
 	build := map[string]interface{}{}
 
 	for _, curComponent := range s.Components {
-		if curComponent.Kind == Varint {
+		switch curComponent.Kind {
+		case Varint:
 			val, readBytes, err := parseVarint(buf, curIdx, &curComponent)
 
 			if err != nil {
@@ -38,4 +39,20 @@ func (s *Schema) Parse(buf []byte) (data map[string]interface{}, endByte int, er
 	}
 
 	return build, curIdx, nil
+}
+
+// Build builds a map[string]interface{} into an []byte
+func (s *Schema) Build(data map[string]interface{}) []byte {
+	build := []byte{}
+
+	for _, curComponent := range s.Components {
+		switch curComponent.Kind {
+		case Varint:
+			build = append(build, buildVarint(data[curComponent.Name].(int))...)
+		default:
+			panic("Unexpected component kind.")
+		}
+	}
+
+	return build
 }

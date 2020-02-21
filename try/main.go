@@ -19,8 +19,15 @@ func main() {
 		Kind: protocore.Varint,
 	})
 
-	d, _, err := sch.Parse([]byte{1, 56, 2, 2, 44, 88, 7})
+	d, _, err := sch.Parse([]byte{128, 56, 2, 44, 88, 7})
 
 	fmt.Println(d)
 	fmt.Println(err)
+
+	b := sch.Build(map[string]interface{}{
+		"uname": -56,
+		"tsts":  481324,
+	})
+
+	fmt.Println(b)
 }

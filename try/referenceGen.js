@@ -12,7 +12,7 @@ const sc = new protocore.Schema([
 ])
 
 const buf = sc.build({
-    "uname": 568,
+    "uname": -56,
     "tsts": 481324,
 })
 
