@@ -19,7 +19,12 @@ func main() {
 		Kind: protocore.Varint,
 	})
 
-	d, _, err := sch.Parse([]byte{128, 56, 2, 44, 88, 7})
+	sch.Components = append(sch.Components, protocore.Component{
+		Name: "tbuf",
+		Kind: protocore.Buffer,
+	})
+
+	d, _, err := sch.Parse([]byte{128, 56, 2, 44, 88, 7, 0, 6, 56, 69, 69, 69, 42, 0})
 
 	fmt.Println(d)
 	fmt.Println(err)
@@ -27,6 +32,7 @@ func main() {
 	b := sch.Build(map[string]interface{}{
 		"uname": -56,
 		"tsts":  481324,
+		"tbuf":  []byte{56, 69, 69, 69, 42, 0},
 	})
 
 	fmt.Println(b)

@@ -5,12 +5,15 @@ import (
 	"math"
 )
 
-func parseVarint(buf []byte, startIdx int, curComponent *Component) (value int, readBytes int, err error) {
-	// Interpret prefix
+type varintPrefixData struct {
+	len  int
+	sign int
+}
 
-	viPrefix := int(buf[startIdx])
+func parseVarintPrefix(pre byte) *varintPrefixData {
+	viPrefix := int(pre)
 	viLen := 0
-	sign := 1 // 1 = positive, -1 = negative
+	sign := 0
 
 	if viPrefix > 127 {
 		viLen = viPrefix - 127
@@ -20,11 +23,28 @@ func parseVarint(buf []byte, startIdx int, curComponent *Component) (value int, 
 		sign = 1
 	}
 
-	if len(buf) < startIdx+viLen+1 {
+	return &varintPrefixData{
+		len:  viLen,
+		sign: sign,
+	}
+}
+
+func parseVarint(buf []byte, startIdx int, curComponent *Component) (value int, readBytes int, err error) {
+	// Interpret prefix
+
+	if startIdx > len(buf)-1 {
 		return 0, 0, errors.New("Could not complete parse. Incomplete varint '" + curComponent.Name + "'.")
 	}
 
-	viRaw := buf[startIdx+1 : startIdx+viLen+1]
+	viPrefix := buf[startIdx]
+
+	preData := parseVarintPrefix(viPrefix)
+
+	if len(buf) < startIdx+preData.len+1 {
+		return 0, 0, errors.New("Could not complete parse. Incomplete varint '" + curComponent.Name + "'.")
+	}
+
+	viRaw := buf[startIdx+1 : startIdx+preData.len+1]
 	viVal := 0
 
 	for viIdx, viCurVal := range viRaw {
@@ -33,11 +53,11 @@ func parseVarint(buf []byte, startIdx int, curComponent *Component) (value int, 
 		viVal += placeVal * int(viCurVal)
 	}
 
-	viVal *= sign
+	viVal *= preData.sign
 
 	// Return read data
 
-	return viVal, viLen + 1, nil
+	return viVal, preData.len + 1, nil
 }
 
 func buildVarint(value int) []byte {

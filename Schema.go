@@ -6,6 +6,9 @@ type ComponentType int
 const (
 	// Varint is a variable length integer
 	Varint ComponentType = iota
+
+	// Buffer is an []byte
+	Buffer
 )
 
 // Component is an element of a protocol
@@ -35,6 +38,15 @@ func (s *Schema) Parse(buf []byte) (data map[string]interface{}, endRead int, er
 
 			build[curComponent.Name] = val
 			curIdx += readBytes
+		case Buffer:
+			val, readBytes, err := parseBuffer(buf, curIdx, &curComponent)
+
+			if err != nil {
+				return nil, 0, err
+			}
+
+			build[curComponent.Name] = val
+			curIdx += readBytes
 		}
 	}
 
@@ -49,6 +61,8 @@ func (s *Schema) Build(data map[string]interface{}) []byte {
 		switch curComponent.Kind {
 		case Varint:
 			build = append(build, buildVarint(data[curComponent.Name].(int))...)
+		case Buffer:
+			build = append(build, buildBuffer(data[curComponent.Name].([]byte))...)
 		default:
 			panic("Unexpected component kind.")
 		}
