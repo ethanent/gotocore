@@ -33,7 +33,7 @@ func parseVarint(buf []byte, startIdx int, curComponent *Component) (value int, 
 	// Interpret prefix
 
 	if startIdx > len(buf)-1 {
-		return 0, 0, errors.New("Could not complete parse. Incomplete varint '" + curComponent.Name + "'.")
+		return 0, 0, errors.New("Could not complete parse. Incomplete Varint '" + curComponent.Name + "'.")
 	}
 
 	viPrefix := buf[startIdx]
@@ -41,7 +41,7 @@ func parseVarint(buf []byte, startIdx int, curComponent *Component) (value int, 
 	preData := parseVarintPrefix(viPrefix)
 
 	if len(buf) < startIdx+preData.len+1 {
-		return 0, 0, errors.New("Could not complete parse. Incomplete varint '" + curComponent.Name + "'.")
+		return 0, 0, errors.New("Could not complete parse. Incomplete Varint '" + curComponent.Name + "'.")
 	}
 
 	viRaw := buf[startIdx+1 : startIdx+preData.len+1]
@@ -81,13 +81,9 @@ func buildVarint(value int) []byte {
 
 	maxPlace /= 256
 
-	bint := 0
-
 	for maxPlace >= 1 {
 		placeValue := int(math.Floor(float64(value) / float64(maxPlace)))
 		v = append([]byte{byte(placeValue)}, v...)
-
-		bint += maxPlace * placeValue
 
 		value %= maxPlace
 		maxPlace /= 256

@@ -10,20 +10,42 @@ type HandlerChan chan map[string]interface{}
 
 // StreamingAbstractor is a streaming agent for transmitting data
 type StreamingAbstractor struct {
-	schemas   map[string]Schema
-	outMux    *sync.RWMutex
-	outBuffer []byte
-	inBuffer  []byte
-	handlers  map[string][]HandlerChan
+	schemas     map[string]Schema
+	outMux      *sync.RWMutex
+	outBuffer   []byte
+	inMux       *sync.Mutex
+	inBuffer    []byte
+	handlers    map[string][]HandlerChan
+	frameSchema *Schema
 }
 
 // NewStreamingAbstractor initializes and returns a StreamingAbstractor pointer
 func NewStreamingAbstractor() *StreamingAbstractor {
+	frameSch := Schema{}
+
+	frameSch.Components = append(frameSch.Components, Component{
+		Name: "event",
+		Kind: String,
+	})
+
+	frameSch.Components = append(frameSch.Components, Component{
+		Name: "mode",
+		Kind: UInt,
+		Size: 8,
+	})
+
+	frameSch.Components = append(frameSch.Components, Component{
+		Name: "serialized",
+		Kind: Buffer,
+		Size: 8,
+	})
+
 	return &StreamingAbstractor{
-		schemas:   map[string]Schema{},
-		outMux:    &sync.RWMutex{},
-		outBuffer: []byte{},
-		inBuffer:  []byte{},
+		schemas:     map[string]Schema{},
+		outMux:      &sync.RWMutex{},
+		outBuffer:   []byte{},
+		inBuffer:    []byte{},
+		frameSchema: &frameSch,
 	}
 }
 
@@ -68,4 +90,34 @@ func (s *StreamingAbstractor) Handle(name string, ch HandlerChan) {
 	} else {
 		schHandlers = append(schHandlers, ch)
 	}
+}
+
+// Handle io functionality
+
+func (s *StreamingAbstractor) Read(p []byte) (int, error) {
+	s.outMux.RLock()
+	defer s.outMux.RUnlock()
+
+	readCount := 0
+
+	for readCount < len(s.outBuffer)-1 && readCount < len(p)-1 {
+		p = append(p, s.outBuffer[readCount])
+
+		readCount++
+	}
+
+	s.outBuffer = s.outBuffer[readCount:]
+
+	return readCount, nil
+}
+
+func (s *StreamingAbstractor) Write(p []byte) (int, error) {
+	s.inMux.Lock()
+	defer s.inMux.Unlock()
+
+	s.inBuffer = append(s.inBuffer, p...)
+
+	// Attempt parse frame
+
+	return len(p), nil
 }

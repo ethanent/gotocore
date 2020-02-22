@@ -17,6 +17,11 @@ const sc = new protocore.Schema([
 		"name": "tstr",
 		"type": protocore.types.string,
 	},
+	{
+		"name": "tuint",
+		"type": protocore.types.uint,
+		"size": 16,
+	},
 ])
 
 const buf = sc.build({
@@ -24,6 +29,7 @@ const buf = sc.build({
 	"tsts": 481324,
 	"tbuf": Buffer.from([56, 69, 69, 69, 42, 0]),
 	"tstr": "HeY THEre! 3546",
+	"tuint": 533,
 })
 
 console.log(Array.from(buf))

@@ -14,12 +14,18 @@ const (
 
 	// String is a string
 	String
+
+	// UInt is an unsigned integer
+	UInt
 )
 
 // Component is an element of a protocol
 type Component struct {
 	Name string
 	Kind ComponentType
+
+	// Size is only used for UInt and Int kinds
+	Size int
 }
 
 // Schema is a Protocore schema to be used for encoding or decoding
@@ -54,6 +60,15 @@ func (s *Schema) Parse(buf []byte) (data map[string]interface{}, endRead int, er
 			curIdx += readBytes
 		case String:
 			val, readBytes, err := parseString(buf, curIdx, &curComponent)
+
+			if err != nil {
+				return nil, 0, err
+			}
+
+			build[curComponent.Name] = val
+			curIdx += readBytes
+		case UInt:
+			val, readBytes, err := parseUInt(buf, curIdx, &curComponent)
 
 			if err != nil {
 				return nil, 0, err
@@ -97,6 +112,14 @@ func (s *Schema) Build(data map[string]interface{}) ([]byte, error) {
 			}
 
 			build = append(build, buildString(dassert)...)
+		case UInt:
+			dassert, ok := data[curComponent.Name].(uint)
+
+			if !ok {
+				return nil, errors.New("failed to assert to uint")
+			}
+
+			build = append(build, buildUInt(dassert)...)
 		default:
 			panic("Unexpected component kind.")
 		}
