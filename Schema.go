@@ -1,5 +1,7 @@
 package protocore
 
+import "errors"
+
 // ComponentType is an enum representing a Component's type
 type ComponentType int
 
@@ -66,21 +68,39 @@ func (s *Schema) Parse(buf []byte) (data map[string]interface{}, endRead int, er
 }
 
 // Build builds a map[string]interface{} into an []byte
-func (s *Schema) Build(data map[string]interface{}) []byte {
+func (s *Schema) Build(data map[string]interface{}) ([]byte, error) {
 	build := []byte{}
 
 	for _, curComponent := range s.Components {
 		switch curComponent.Kind {
 		case Varint:
-			build = append(build, buildVarint(data[curComponent.Name].(int))...)
+			dassert, ok := data[curComponent.Name].(int)
+
+			if !ok {
+				return nil, errors.New("failed to assert to int")
+			}
+
+			build = append(build, buildVarint(dassert)...)
 		case Buffer:
-			build = append(build, buildBuffer(data[curComponent.Name].([]byte))...)
+			dassert, ok := data[curComponent.Name].([]byte)
+
+			if !ok {
+				return nil, errors.New("failed to assert to []byte")
+			}
+
+			build = append(build, buildBuffer(dassert)...)
 		case String:
-			build = append(build, buildString(data[curComponent.Name].(string))...)
+			dassert, ok := data[curComponent.Name].(string)
+
+			if !ok {
+				return nil, errors.New("failed to assert to string")
+			}
+
+			build = append(build, buildString(dassert)...)
 		default:
 			panic("Unexpected component kind.")
 		}
 	}
 
-	return build
+	return build, nil
 }
