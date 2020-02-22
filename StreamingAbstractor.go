@@ -2,6 +2,7 @@ package protocore
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 )
 
@@ -41,9 +42,11 @@ func NewStreamingAbstractor() *StreamingAbstractor {
 	})
 
 	return &StreamingAbstractor{
+		handlers:    map[string][]HandlerChan{},
 		schemas:     map[string]Schema{},
 		outMux:      &sync.RWMutex{},
 		outBuffer:   []byte{},
+		inMux:       &sync.Mutex{},
 		inBuffer:    []byte{},
 		frameSchema: &frameSch,
 	}
@@ -89,6 +92,7 @@ func (s *StreamingAbstractor) Handle(name string, ch HandlerChan) {
 		s.handlers[name] = []HandlerChan{ch}
 	} else {
 		schHandlers = append(schHandlers, ch)
+		s.handlers[name] = schHandlers
 	}
 }
 
@@ -106,6 +110,10 @@ func (s *StreamingAbstractor) Read(p []byte) (int, error) {
 		readCount++
 	}
 
+	if len(p[:readCount]) > 0 {
+		fmt.Println(p[:readCount])
+	}
+
 	s.outBuffer = s.outBuffer[readCount:]
 
 	return readCount, nil
@@ -119,5 +127,62 @@ func (s *StreamingAbstractor) Write(p []byte) (int, error) {
 
 	// Attempt parse frame
 
+	frameData, frameLen, frameErr := s.frameSchema.Parse(p)
+
+	if frameErr == nil {
+		// Frame is now fully arrived
+
+		// Clear frame from buffer
+
+		s.inBuffer = s.inBuffer[frameLen:]
+
+		// Handle frame data
+
+		eventName := frameData["event"].(string)
+
+		relevSchema, ok := s.schemas[eventName]
+
+		if ok {
+			// Schema is relevant
+
+			data, _, err := relevSchema.Parse(frameData["serialized"].([]byte))
+
+			if err == nil {
+				// Find handlers and give them data, if any exist
+
+				s.informHandlers(eventName, data)
+			} else {
+				// Malformatted serialized data. Will be ignored.
+			}
+		} else {
+			// Schema is unregistered. Will ignore message.
+		}
+	} else {
+		// Frame is not yet fully buffered.
+	}
+
 	return len(p), nil
+}
+
+func (s *StreamingAbstractor) informHandlers(event string, data map[string]interface{}) {
+	evHandlers, ok := s.handlers[event]
+
+	if !ok {
+		// No handlers for event
+
+		return
+	}
+
+	// Handlers exist for event!
+	for len(evHandlers) > 0 {
+		evh := evHandlers[0]
+
+		// Provide data to handler
+		evh <- data
+
+		// Drop handler
+		evHandlers = evHandlers[1:]
+	}
+
+	s.handlers[event] = evHandlers
 }
