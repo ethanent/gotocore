@@ -9,6 +9,9 @@ const (
 
 	// Buffer is an []byte
 	Buffer
+
+	// String is a string
+	String
 )
 
 // Component is an element of a protocol
@@ -47,6 +50,15 @@ func (s *Schema) Parse(buf []byte) (data map[string]interface{}, endRead int, er
 
 			build[curComponent.Name] = val
 			curIdx += readBytes
+		case String:
+			val, readBytes, err := parseString(buf, curIdx, &curComponent)
+
+			if err != nil {
+				return nil, 0, err
+			}
+
+			build[curComponent.Name] = val
+			curIdx += readBytes
 		}
 	}
 
@@ -63,6 +75,8 @@ func (s *Schema) Build(data map[string]interface{}) []byte {
 			build = append(build, buildVarint(data[curComponent.Name].(int))...)
 		case Buffer:
 			build = append(build, buildBuffer(data[curComponent.Name].([]byte))...)
+		case String:
+			build = append(build, buildString(data[curComponent.Name].(string))...)
 		default:
 			panic("Unexpected component kind.")
 		}
