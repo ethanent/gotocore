@@ -2,7 +2,6 @@ package protocore
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 )
 
@@ -65,15 +64,25 @@ func (s *StreamingAbstractor) Send(name string, data map[string]interface{}) err
 		return errors.New("unregistered schema '" + name + "'")
 	}
 
-	d, err := relevSchema.Build(data)
+	serialized, err := relevSchema.Build(data)
+
+	if err != nil {
+		return err
+	}
+
+	fullFrame, err := s.frameSchema.Build(map[string]interface{}{
+		"event":      name,
+		"mode":       uint(0),
+		"serialized": serialized,
+	})
 
 	if err != nil {
 		return err
 	}
 
 	s.outMux.Lock()
-	s.outBuffer = append(s.outBuffer, d...)
-	s.outMux.Unlock()
+	defer s.outMux.Unlock()
+	s.outBuffer = append(s.outBuffer, fullFrame...)
 
 	return nil
 }
@@ -104,14 +113,10 @@ func (s *StreamingAbstractor) Read(p []byte) (int, error) {
 
 	readCount := 0
 
-	for readCount < len(s.outBuffer)-1 && readCount < len(p)-1 {
-		p = append(p, s.outBuffer[readCount])
+	for readCount < len(s.outBuffer) && readCount < len(p) {
+		p[readCount] = s.outBuffer[readCount]
 
 		readCount++
-	}
-
-	if len(p[:readCount]) > 0 {
-		fmt.Println(p[:readCount])
 	}
 
 	s.outBuffer = s.outBuffer[readCount:]

@@ -25,6 +25,10 @@ func parseUInt(buf []byte, startIdx int, curComponent *Component) (value uint, r
 }
 
 func buildUInt(value uint) []byte {
+	if value == 0 {
+		return []byte{0}
+	}
+
 	build := []byte{}
 
 	var maxPlace uint = 1
