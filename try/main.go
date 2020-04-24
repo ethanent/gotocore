@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"time"
 
 	"github.com/ethanent/protocore-go"
@@ -60,27 +61,48 @@ func hostTestServer() {
 func handleConn(c net.Conn) {
 	abs := protocore.NewStreamingAbstractor()
 
-	abs.Register("tester", sch)
+	abs.Register("test", sch)
 
 	go func() {
 		for {
 			ch := make(chan map[string]interface{}, 1)
 
-			abs.Handle("tester", ch)
+			abs.Handle("test", ch)
 
-			fmt.Println("got msg!", <-ch)
+			fmt.Println("Got test message.", <-ch)
 		}
 	}()
 
-	go io.Copy(abs, c)
-	go io.Copy(c, abs)
+	// Duplex copy
+
+	go func() {
+		_, err := io.Copy(abs, c)
+
+		if err != nil {
+			panic(err)
+		} else {
+			os.Exit(0)
+		}
+	}()
+
+	go func() {
+		_, err := io.Copy(c, abs)
+
+		if err != nil {
+			panic(err)
+		} else {
+			os.Exit(0)
+		}
+	}()
+
+	// Send data periodically
 
 	go func() {
 		for {
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(4000 * time.Millisecond)
 
-			err := abs.Send("tester", map[string]interface{}{
-				"tvarint": -58,
+			err := abs.Send("test", map[string]interface{}{
+				"tvarint": -974332,
 				"tbuf":    []byte{56, 64, 69, 62, 42, 255},
 				"tstr":    "HeY ThERe! 5236",
 				"tuint":   uint(220),

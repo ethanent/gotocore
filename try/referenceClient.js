@@ -23,21 +23,25 @@ const sc = new Schema([
 
 const abs = new StreamingAbstractor()
 
-abs.register('tester', sc)
+abs.register('test', sc)
 
 const conn = net.connect(8080)
+
+conn.on('data', (b) => {
+	console.log(b)
+})
 
 conn.on('connect', () => {
 	console.log('ready')
 
 	abs.bind(conn)
 
-	abs.on('tester', (data) => {
-		console.log("got", data)
+	abs.on('test', (data) => {
+		console.log("Got test message.", data)
 	})
 
 	setInterval(() => {
-		abs.send('tester', {
+		abs.send('test', {
 			"tvarint": -535234,
 			"tbuf": Buffer.from([51, 35, 51, 35, 64]),
 			"tstr": "hey there :)",
@@ -45,5 +49,5 @@ conn.on('connect', () => {
 		})
 
 		console.log('sent')
-	}, 7000)
+	}, 4000)
 })
