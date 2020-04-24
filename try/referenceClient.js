@@ -27,10 +27,6 @@ abs.register('test', sc)
 
 const conn = net.connect(8080)
 
-conn.on('data', (b) => {
-	console.log(b)
-})
-
 conn.on('connect', () => {
 	console.log('ready')
 
