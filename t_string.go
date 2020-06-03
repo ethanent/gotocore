@@ -1,4 +1,4 @@
-package protocore
+package gotocore
 
 func parseString(buf []byte, startIdx int, curComponent *Component) (value string, readBytes int, err error) {
 	sbuf, slen, err := parseBuffer(buf, startIdx, curComponent)

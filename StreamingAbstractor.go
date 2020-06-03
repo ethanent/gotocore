@@ -1,4 +1,4 @@
-package protocore
+package gotocore
 
 import (
 	"errors"

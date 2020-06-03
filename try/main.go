@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ethanent/protocore-go"
+	protocore "github.com/ethanent/gotocore"
 )
 
 var sch protocore.Schema = protocore.Schema{}
