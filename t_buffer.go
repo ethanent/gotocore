@@ -16,10 +16,16 @@ func parseBuffer(buf []byte, startIdx int, curComponent *Component) (value []byt
 	return buf[startIdx+preLen : startIdx+preLen+bufLen], preLen + bufLen, nil
 }
 
-func buildBuffer(value []byte) []byte {
+func buildBuffer(ov interface{}) ([]byte, error) {
+	value, ok := ov.([]byte)
+
+	if !ok {
+		return nil, errors.New("expected []byte value for ov")
+	}
+
 	v := buildVarint(len(value))
 
 	v = append(v, value...)
 
-	return v
+	return v, nil
 }

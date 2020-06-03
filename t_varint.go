@@ -60,7 +60,13 @@ func parseVarint(buf []byte, startIdx int, curComponent *Component) (value int, 
 	return viVal, preData.len + 1, nil
 }
 
-func buildVarint(value int) []byte {
+func buildVarint(ov interface{}) ([]byte, error) {
+	value, ok := ov.(int)
+
+	if !ok {
+		return nil, errors.New("expected int as value for ov")
+	}
+
 	v := []byte{}
 
 	osign := 1
@@ -103,5 +109,5 @@ func buildVarint(value int) []byte {
 		v = append([]byte{byte(viLen - 1)}, v...)
 	}
 
-	return v
+	return v, nil
 }

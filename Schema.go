@@ -33,6 +33,26 @@ type Schema struct {
 	Components []Component
 }
 
+type typeMethods struct {
+	marshal   func(interface{}) ([]byte, error)
+	unmarshal func([]byte, []int, *Component) (interface{}, int, error)
+}
+
+var typeMethodsMap map[ComponentType]typeMethods = map[ComponentType]typeMethods{
+	Varint: typeMethods{
+		marshal: buildVarint,
+	},
+	UInt: typeMethods{
+		marshal: buildUInt,
+	},
+	Buffer: typeMethods{
+		marshal: buildBuffer,
+	},
+	String: typeMethods{
+		marshal: buildString,
+	},
+}
+
 // Parse parses []byte buf into a map[string]interface{}
 func (s *Schema) Parse(buf []byte) (data map[string]interface{}, endRead int, err error) {
 	curIdx := 0
@@ -87,42 +107,19 @@ func (s *Schema) Build(data map[string]interface{}) ([]byte, error) {
 	build := []byte{}
 
 	for _, curComponent := range s.Components {
-		switch curComponent.Kind {
-		case Varint:
-			dassert, ok := data[curComponent.Name].(int)
+		typeM, ok := typeMethodsMap[curComponent.Kind]
 
-			if !ok {
-				return nil, errors.New("failed to assert to int")
-			}
-
-			build = append(build, buildVarint(dassert)...)
-		case Buffer:
-			dassert, ok := data[curComponent.Name].([]byte)
-
-			if !ok {
-				return nil, errors.New("failed to assert to []byte")
-			}
-
-			build = append(build, buildBuffer(dassert)...)
-		case String:
-			dassert, ok := data[curComponent.Name].(string)
-
-			if !ok {
-				return nil, errors.New("failed to assert to string")
-			}
-
-			build = append(build, buildString(dassert)...)
-		case UInt:
-			dassert, ok := data[curComponent.Name].(uint)
-
-			if !ok {
-				return nil, errors.New("failed to assert to uint")
-			}
-
-			build = append(build, buildUInt(dassert)...)
-		default:
-			panic("Unexpected component kind.")
+		if !ok {
+			return nil, errors.New("could not locate build function for kind")
 		}
+
+		marshalled, err := typeM.marshal(data[curComponent.Name])
+
+		if err != nil {
+			return nil, err
+		}
+
+		build = append(build, marshalled...)
 	}
 
 	return build, nil

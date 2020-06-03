@@ -24,9 +24,15 @@ func parseUInt(buf []byte, startIdx int, curComponent *Component) (value uint, r
 	return val, uintLen, nil
 }
 
-func buildUInt(value uint) []byte {
+func buildUInt(ov interface{}) ([]byte, error) {
+	value, ok := ov.(uint)
+
+	if !ok {
+		return nil, errors.New("expected uint value for ov")
+	}
+
 	if value == 0 {
-		return []byte{0}
+		return []byte{0}, nil
 	}
 
 	build := []byte{}
@@ -47,5 +53,5 @@ func buildUInt(value uint) []byte {
 		maxPlace /= 256
 	}
 
-	return build
+	return build, nil
 }
