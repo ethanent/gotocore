@@ -34,7 +34,7 @@ func getGotocoreFields(d interface{}) []reflect.StructField {
 }
 
 // Marshal will marshal data into a Gotocore-supported []byte
-func Marshal(d interface{}) []byte {
+func Marshal(d interface{}) ([]byte, error) {
 	// Get all Gotocore fields
 
 	gotocoreFields := getGotocoreFields(d)
@@ -53,7 +53,13 @@ func Marshal(d interface{}) []byte {
 		// Handle struct if nested struct / pointer
 
 		if valueKind == reflect.Struct {
-			built = append(built, Marshal(f.Interface())...)
+			marshalledNested, err := Marshal(f.Interface())
+
+			if err != nil {
+				return nil, err
+			}
+
+			built = append(built, marshalledNested...)
 			continue
 		}
 
@@ -61,7 +67,13 @@ func Marshal(d interface{}) []byte {
 			elem := f.Elem()
 
 			if elem.Kind() == reflect.Struct {
-				built = append(built, Marshal(f.Elem().Interface())...)
+				marshalledNested, err := Marshal(f.Interface())
+
+				if err != nil {
+					return nil, err
+				}
+
+				built = append(built, marshalledNested...)
 			} else {
 				panic("protostruct does not support marshalling pointers to non-struct values")
 			}
@@ -96,17 +108,27 @@ func Marshal(d interface{}) []byte {
 				panic(err)
 			}
 
+			var uintValue uint
+
 			if isInt {
-				built = append(built, buildUInt(uint(f.Int()), size)...)
+				uintValue = uint(f.Int())
 			} else {
-				built = append(built, buildUInt(uint(f.Uint()), size)...)
+				uintValue = uint(f.Uint())
 			}
+
+			builtUint, err := buildUInt(uintValue, size)
+
+			if err != nil {
+				return nil, err
+			}
+
+			built = append(built, builtUint...)
 		default:
 			panic("unknown kind " + protoType)
 		}
 	}
 
-	return built
+	return built, nil
 }
 
 // Unmarshal parses d into dest struct
@@ -226,7 +248,7 @@ func Unmarshal(data []byte, d interface{}) (n int, err error) {
 
 			parsedFieldValue, readCount, err := parseUInt(data, curLoc, &Component{
 				Name: gField.Name,
-				Kind: UInt,
+				Kind: Uint,
 				Size: size,
 			})
 

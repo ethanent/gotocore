@@ -30,7 +30,7 @@ func NewStreamingAbstractor() *StreamingAbstractor {
 
 	frameSch.Components = append(frameSch.Components, Component{
 		Name: "mode",
-		Kind: UInt,
+		Kind: Uint,
 		Size: 8,
 	})
 

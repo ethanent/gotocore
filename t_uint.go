@@ -1,8 +1,9 @@
 package gotocore
 
 import (
+	"encoding/binary"
 	"errors"
-	"math"
+	"github.com/ethanent/gotocore/util"
 	"strconv"
 )
 
@@ -25,42 +26,29 @@ func parseUInt(buf []byte, startIdx int, curComponent *Component) (value uint, r
 	return val, uintLen, nil
 }
 
-func buildUInt(value uint, size int) []byte {
+func buildUInt(value uint, size int) ([]byte, error) {
 	if size < 1 {
 		panic("invalid uint size " + strconv.Itoa(size))
 	}
 
-	if value == 0 {
-		return []byte{0}
+	build := make([]byte, size/8, size/8)
+
+	if value > uint(util.Ipow(2, size)-1) {
+		return nil, errors.New("value " + strconv.Itoa(int(value)) + " out of range for uint" + strconv.Itoa(size))
 	}
 
-	build := []byte{}
-
-	var maxPlace uint = 1
-
-	for value > maxPlace {
-		maxPlace *= 256
+	switch size {
+	case 8:
+		build[0] = byte(value)
+	case 16:
+		binary.LittleEndian.PutUint16(build, uint16(value))
+	case 32:
+		binary.LittleEndian.PutUint32(build, uint32(value))
+	case 64:
+		binary.LittleEndian.PutUint64(build, uint64(value))
+	default:
+		panic("invalid uint length " + strconv.Itoa(size))
 	}
 
-	maxPlace /= 256
-
-	for maxPlace >= 1 {
-		placeValue := uint(math.Floor(float64(value) / float64(maxPlace)))
-		build = append([]byte{byte(placeValue)}, build...)
-
-		value %= maxPlace
-		maxPlace /= 256
-	}
-
-	// Ensure size confirmity
-
-	if len(build)*8 > size {
-		panic("uint value " + strconv.Itoa(int(value)) + " out of range for uint" + strconv.Itoa(size))
-	}
-
-	for len(build)*8 < size {
-		build = append([]byte{0}, build...)
-	}
-
-	return build
+	return build, nil
 }

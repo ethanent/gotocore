@@ -15,8 +15,8 @@ const (
 	// String is a string
 	String
 
-	// UInt is an unsigned integer
-	UInt
+	// Uint is an unsigned integer
+	Uint
 )
 
 // Component is an element of a protocol
@@ -67,7 +67,7 @@ func (s *Schema) Parse(buf []byte) (data map[string]interface{}, endRead int, er
 
 			build[curComponent.Name] = val
 			curIdx += readBytes
-		case UInt:
+		case Uint:
 			val, readBytes, err := parseUInt(buf, curIdx, &curComponent)
 
 			if err != nil {
@@ -112,14 +112,20 @@ func (s *Schema) Build(data map[string]interface{}) ([]byte, error) {
 			}
 
 			build = append(build, buildString(dassert)...)
-		case UInt:
+		case Uint:
 			dassert, ok := data[curComponent.Name].(uint)
 
 			if !ok {
 				return nil, errors.New("failed to assert to uint")
 			}
 
-			build = append(build, buildUInt(dassert, curComponent.Size)...)
+			builtUint, err := buildUInt(dassert, curComponent.Size)
+
+			if err != nil {
+				return nil, err
+			}
+
+			build = append(build, builtUint...)
 		default:
 			panic("Unexpected component kind.")
 		}

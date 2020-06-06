@@ -16,23 +16,27 @@ type address struct {
 
 type user struct {
 	Name string   `g:"0,string"`
-	Age  int      `g:"1,uint,64"`
-	Addr *address `g:"2"`
+	Addr *address `g:"1"`
+	Age  int      `g:"2,uint,16"`
 }
 
 func main() {
 	ethan := &user{
 		Name: "Ethan",
-		Age:  18,
 		Addr: &address{
 			Number:      24,
 			Street:      "Bayview Avenue",
 			City:        "San Francisco",
 			AdminRegion: "California",
 		},
+		Age: 2552,
 	}
 
-	d := gotocore.Marshal(ethan)
+	d, err := gotocore.Marshal(ethan)
+
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Println("Prenoise length:", len(d))
 
