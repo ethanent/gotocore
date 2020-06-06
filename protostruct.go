@@ -1,6 +1,7 @@
 package gotocore
 
 import (
+	"errors"
 	"reflect"
 	"strconv"
 	"strings"
@@ -48,6 +49,27 @@ func Marshal(d interface{}) []byte {
 		f := v.FieldByName(gField.Name)
 
 		valueKind := f.Kind()
+
+		// Handle struct if nested struct / pointer
+
+		if valueKind == reflect.Struct {
+			built = append(built, Marshal(f.Interface())...)
+			continue
+		}
+
+		if valueKind == reflect.Ptr {
+			elem := f.Elem()
+
+			if elem.Kind() == reflect.Struct {
+				built = append(built, Marshal(f.Elem().Interface())...)
+			} else {
+				panic("protostruct does not support marshalling pointers to non-struct values")
+			}
+			continue
+		}
+
+		// Otherwise handle based on tag-specified kind
+
 		protoDesc := strings.Split(gField.Tag.Get("g"), ",")
 
 		protoType := protoDesc[1]
@@ -85,4 +107,152 @@ func Marshal(d interface{}) []byte {
 	}
 
 	return built
+}
+
+// Unmarshal parses d into dest struct
+func Unmarshal(data []byte, d interface{}) (n int, err error) {
+	// Get all Gotocore fields
+
+	gotocoreFields := getGotocoreFields(d)
+
+	// Extract data from gotocore fields
+
+	v := reflect.Indirect(reflect.ValueOf(d))
+
+	curLoc := 0
+
+	for _, gField := range gotocoreFields {
+		f := v.FieldByName(gField.Name)
+
+		valueKind := f.Kind()
+
+		// Handle struct or pointer to struct
+
+		if gField.Type.Kind() == reflect.Struct {
+			fv := reflect.New(gField.Type)
+
+			end, err := Unmarshal(data[curLoc:], fv.Interface())
+
+			if err != nil {
+				return 0, err
+			}
+
+			curLoc += end
+
+			if !f.CanSet() {
+				return 0, errors.New("cannot set field " + gField.Name)
+			}
+
+			f.Set(fv.Elem())
+
+			continue
+		}
+
+		if gField.Type.Kind() == reflect.Ptr {
+			fv := reflect.New(gField.Type.Elem())
+
+			end, err := Unmarshal(data[curLoc:], fv.Interface())
+
+			if err != nil {
+				return 0, err
+			}
+
+			curLoc += end
+
+			if !f.CanSet() {
+				return 0, errors.New("cannot set field " + gField.Name)
+			}
+
+			f.Set(reflect.ValueOf(fv.Interface()))
+
+			continue
+		}
+
+		// Otherwise handle based on tag-specified kind
+
+		protoDesc := strings.Split(gField.Tag.Get("g"), ",")
+
+		protoType := protoDesc[1]
+
+		switch protoType {
+		case "varint":
+			parsedFieldValue, readCount, err := parseVarint(data, curLoc, &Component{
+				Name: gField.Name,
+				Kind: Varint,
+				Size: -1,
+			})
+
+			if err != nil {
+				return 0, err
+			}
+
+			curLoc += readCount
+
+			f.SetInt(int64(parsedFieldValue))
+		case "string":
+			parsedFieldValue, readCount, err := parseString(data, curLoc, &Component{
+				Name: gField.Name,
+				Kind: String,
+				Size: -1,
+			})
+
+			if err != nil {
+				return 0, err
+			}
+
+			curLoc += readCount
+
+			f.SetString(parsedFieldValue)
+		case "buffer":
+			parsedFieldValue, readCount, err := parseBuffer(data, curLoc, &Component{
+				Name: gField.Name,
+				Kind: Buffer,
+				Size: -1,
+			})
+
+			if err != nil {
+				return 0, err
+			}
+
+			curLoc += readCount
+
+			f.SetBytes(parsedFieldValue)
+		case "uint":
+			size, err := strconv.Atoi(protoDesc[2])
+
+			if err != nil {
+				panic(err)
+			}
+
+			parsedFieldValue, readCount, err := parseUInt(data, curLoc, &Component{
+				Name: gField.Name,
+				Kind: UInt,
+				Size: size,
+			})
+
+			if err != nil {
+				return 0, err
+			}
+
+			curLoc += readCount
+
+			isInt := false
+
+			for _, k := range intKinds {
+				if valueKind == k {
+					isInt = true
+				}
+			}
+
+			if isInt {
+				f.SetInt(int64(parsedFieldValue))
+			} else {
+				f.SetUint(uint64(parsedFieldValue))
+			}
+		default:
+			panic("unknown kind " + protoType)
+		}
+	}
+
+	return curLoc, nil
 }
