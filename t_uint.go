@@ -3,6 +3,7 @@ package gotocore
 import (
 	"errors"
 	"math"
+	"strconv"
 )
 
 func parseUInt(buf []byte, startIdx int, curComponent *Component) (value uint, readBytes int, err error) {
@@ -24,7 +25,11 @@ func parseUInt(buf []byte, startIdx int, curComponent *Component) (value uint, r
 	return val, uintLen, nil
 }
 
-func buildUInt(value uint) []byte {
+func buildUInt(value uint, size int) []byte {
+	if size < 1 {
+		panic("invalid uint size " + strconv.Itoa(size))
+	}
+
 	if value == 0 {
 		return []byte{0}
 	}
@@ -45,6 +50,16 @@ func buildUInt(value uint) []byte {
 
 		value %= maxPlace
 		maxPlace /= 256
+	}
+
+	// Ensure size confirmity
+
+	if len(build)*8 > size {
+		panic("uint value " + strconv.Itoa(int(value)) + " out of range for uint" + strconv.Itoa(size))
+	}
+
+	for len(build)*8 < size {
+		build = append([]byte{0}, build...)
 	}
 
 	return build

@@ -7,8 +7,8 @@ import (
 )
 
 type user struct {
-	Name string `g:"string"`
-	Age  int    `g:"uint"`
+	Name string `g:"0,string"`
+	Age  int    `g:"0,uint,8"`
 }
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 		Age:  18,
 	}
 
-	d := gotocore.Build(ethan)
+	d := gotocore.Marshal(ethan)
 
 	fmt.Println(d)
 }

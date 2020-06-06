@@ -2,12 +2,12 @@ package gotocore
 
 import "errors"
 
-// ComponentType is an enum representing a Component's type
-type ComponentType int
+// ComponentKind is an enum representing a Component's Kind
+type ComponentKind int
 
 const (
 	// Varint is a variable length integer
-	Varint ComponentType = iota
+	Varint ComponentKind = iota
 
 	// Buffer is an []byte
 	Buffer
@@ -22,7 +22,7 @@ const (
 // Component is an element of a protocol
 type Component struct {
 	Name string
-	Kind ComponentType
+	Kind ComponentKind
 
 	// Size is only used for UInt and Int kinds
 	Size int
@@ -119,7 +119,7 @@ func (s *Schema) Build(data map[string]interface{}) ([]byte, error) {
 				return nil, errors.New("failed to assert to uint")
 			}
 
-			build = append(build, buildUInt(dassert)...)
+			build = append(build, buildUInt(dassert, curComponent.Size)...)
 		default:
 			panic("Unexpected component kind.")
 		}

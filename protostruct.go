@@ -2,6 +2,8 @@ package gotocore
 
 import (
 	"reflect"
+	"strconv"
+	"strings"
 )
 
 var intKinds []reflect.Kind = []reflect.Kind{reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64}
@@ -46,7 +48,9 @@ func Marshal(d interface{}) []byte {
 		f := v.FieldByName(gField.Name)
 
 		valueKind := f.Kind()
-		protoType := gField.Tag.Get("g")
+		protoDesc := strings.Split(gField.Tag.Get("g"), ",")
+
+		protoType := protoDesc[1]
 
 		switch protoType {
 		case "varint":
@@ -64,11 +68,19 @@ func Marshal(d interface{}) []byte {
 				}
 			}
 
-			if isInt {
-				built = append(built, buildUInt(uint(f.Int()))...)
-			} else {
-				built = append(built, buildUInt(uint(f.Uint()))...)
+			size, err := strconv.Atoi(protoDesc[2])
+
+			if err != nil {
+				panic(err)
 			}
+
+			if isInt {
+				built = append(built, buildUInt(uint(f.Int()), size)...)
+			} else {
+				built = append(built, buildUInt(uint(f.Uint()), size)...)
+			}
+		default:
+			panic("unknown kind " + protoType)
 		}
 	}
 
