@@ -3,11 +3,61 @@ package gotocore
 import (
 	"errors"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 )
 
 var intKinds []reflect.Kind = []reflect.Kind{reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64}
+
+type gotocoreFieldData struct {
+	index int
+	kind  string
+	args  []string
+}
+
+func parseGotocoreTag(s string) *gotocoreFieldData {
+	segs := strings.Split(s, ",")
+
+	idx, err := strconv.Atoi(segs[0])
+
+	if err != nil {
+		panic(err)
+	}
+
+	td := &gotocoreFieldData{
+		index: idx,
+	}
+
+	if len(segs) >= 2 {
+		td.kind = segs[1]
+	}
+
+	if len(segs) >= 3 {
+		td.args = segs[2:]
+	}
+
+	return td
+}
+
+type sortableGotocoreFieldsSlice []reflect.StructField
+
+func (s sortableGotocoreFieldsSlice) Len() int {
+	return len(s)
+}
+
+func (s sortableGotocoreFieldsSlice) Less(i, j int) bool {
+	return parseGotocoreTag(s[i].Tag.Get("g")).index < parseGotocoreTag(s[j].Tag.Get("g")).index
+}
+
+func (s sortableGotocoreFieldsSlice) Swap(i, j int) {
+	hold := s[i]
+
+	s[i] = s[j]
+	s[j] = hold
+}
+
+var fieldsCache = map[reflect.Type][]reflect.StructField{}
 
 func getGotocoreFields(d interface{}) []reflect.StructField {
 	// Get all Gotocore fields
@@ -18,7 +68,13 @@ func getGotocoreFields(d interface{}) []reflect.StructField {
 		t = t.Elem()
 	}
 
-	gotocoreFields := []reflect.StructField{}
+	relevRes, ok := fieldsCache[t]
+
+	if ok {
+		return relevRes
+	}
+
+	gotocoreFields := sortableGotocoreFieldsSlice{}
 
 	for i := 0; i < t.NumField(); i++ {
 		curField := t.Field(i)
@@ -29,6 +85,10 @@ func getGotocoreFields(d interface{}) []reflect.StructField {
 
 		gotocoreFields = append(gotocoreFields, curField)
 	}
+
+	sort.Sort(gotocoreFields)
+
+	fieldsCache[t] = gotocoreFields
 
 	return gotocoreFields
 }
