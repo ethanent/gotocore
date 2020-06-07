@@ -30,7 +30,7 @@ func main() {
 
 	sch.Components = append(sch.Components, protocore.Component{
 		Name: "tuint",
-		Kind: protocore.UInt,
+		Kind: protocore.Uint,
 		Size: 16,
 	})
 
